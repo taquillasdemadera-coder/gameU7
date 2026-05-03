@@ -1,73 +1,109 @@
 <!DOCTYPE html><html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mini Editor de Video</title>
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+  <title>Reproductor Multimedia</title>
   <style>
-    body { font-family: sans-serif; padding: 10px; background: #111; color: #fff; }
-    video { width: 100%; margin-top: 10px; }
-    button, input { margin: 5px; padding: 10px; }
-    .controls { display: flex; flex-wrap: wrap; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      cursor: pointer;
+      background: #28a745;
+      color: white;
+    }
+    video, audio, iframe {
+      margin-top: 20px;
+      max-width: 90%;
+      border-radius: 12px;
+    }
+    iframe {
+      width: 80%;
+      height: 450px;
+    }
+    a.download {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 10px 15px;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+    }
   </style>
 </head>
-<body><h2>Editor de Video Simple (FFmpeg)</h2>
-<input type="file" id="upload" accept="video/*"><video id="preview" controls></video>
+<body>  <h1>🎵 Reproductor Multimedia</h1>  <input type="text" id="urlInput" placeholder="Pega aquí el enlace (mp4, mp3, YouTube, etc)">
+  <br>
+  <button onclick="loadMedia()">Cargar</button>  <div id="player"></div>
+  <div id="download"></div>  <script>
+    function getYouTubeID(url) {
+      const regExp = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/;
+      const match = url.match(regExp);
+      return match ? match[1] : null;
+    }
 
-<div class="controls">
-  <button onclick="trim()">✂️ Recortar 0-5s</button>
-  <button onclick="zoom()">🔍 Zoom</button>
-  <button onclick="split()">📂 Dividir en 2</button>
-</div><a id="download" style="display:none">Descargar</a>
+    function loadMedia() {
+      const url = document.getElementById('urlInput').value;
+      const playerDiv = document.getElementById('player');
+      const downloadDiv = document.getElementById('download');
 
-<script>
-  const { createFFmpeg, fetchFile } = FFmpeg;
-  const ffmpeg = createFFmpeg({ log: true });
+      playerDiv.innerHTML = '';
+      downloadDiv.innerHTML = '';
 
-  const video = document.getElementById('preview');
-  const upload = document.getElementById('upload');
-  const download = document.getElementById('download');
+      if (!url) return;
 
-  let filename = 'input.mp4';
+      let media;
 
-  upload.onchange = async (e) => {
-    const file = e.target.files[0];
-    video.src = URL.createObjectURL(file);
+      // YouTube
+      const ytID = getYouTubeID(url);
+      if (ytID) {
+        media = document.createElement('iframe');
+        media.src = `https://www.youtube.com/embed/${ytID}`;
+        media.frameBorder = "0";
+        media.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+        media.allowFullscreen = true;
 
-    if (!ffmpeg.isLoaded()) await ffmpeg.load();
+        playerDiv.appendChild(media);
 
-    ffmpeg.FS('writeFile', filename, await fetchFile(file));
-  };
+        downloadDiv.innerHTML = '<p>No se puede descargar directamente desde YouTube por restricciones.</p>';
+        return;
+      }
 
-  async function trim() {
-    await ffmpeg.run('-i', filename, '-ss', '0', '-to', '5', '-c', 'copy', 'out.mp4');
-    exportVideo('out.mp4');
-  }
+      // Video
+      if (url.match(/\.(mp4|webm|ogg)$/i)) {
+        media = document.createElement('video');
+        media.controls = true;
+      }
+      // Audio
+      else if (url.match(/\.(mp3|wav|ogg)$/i)) {
+        media = document.createElement('audio');
+        media.controls = true;
+      }
+      else {
+        playerDiv.innerHTML = '<p>Formato no soportado directamente.</p>';
+        return;
+      }
 
-  async function zoom() {
-    await ffmpeg.run(
-      '-i', filename,
-      '-vf', 'scale=iw*1.5:ih*1.5',
-      'zoom.mp4'
-    );
-    exportVideo('zoom.mp4');
-  }
+      media.src = url;
+      playerDiv.appendChild(media);
 
-  async function split() {
-    await ffmpeg.run('-i', filename, '-t', '5', '-c', 'copy', 'part1.mp4');
-    await ffmpeg.run('-i', filename, '-ss', '5', '-c', 'copy', 'part2.mp4');
-    exportVideo('part1.mp4');
-  }
+      // Botón de descarga
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = '';
+      link.className = 'download';
+      link.innerText = '⬇️ Descargar archivo';
 
-  function exportVideo(name) {
-    const data = ffmpeg.FS('readFile', name);
-    const url = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
-
-    video.src = url;
-    download.href = url;
-    download.download = name;
-    download.style.display = 'block';
-    download.innerText = '⬇️ Descargar ' + name;
-  }
-</script></body>
+      downloadDiv.appendChild(link);
+    }
+  </script></body>
 </html>
