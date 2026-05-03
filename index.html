@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Motor Vocabulary Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial; }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 10px;
+    }
+    #result {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 32px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div id="ui">
+  <div id="level">Nivel 1</div>
+  <div id="score">Score: 0</div>
+  <div id="word"></div>
+</div>
+<div id="result"></div><script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script><script>
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Música (open source)
+let audio = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bba82.mp3");
+audio.loop = true;
+audio.volume = 0.3;
+document.body.addEventListener("click", ()=> audio.play());
+
+// Moto (cubo simple)
+let geometry = new THREE.BoxGeometry();
+let material = new THREE.MeshBasicMaterial({color: 0xff0000});
+let bike = new THREE.Mesh(geometry, material);
+scene.add(bike);
+
+camera.position.z = 5;
+
+// Carreteras
+let roads = [];
+for(let i=-1;i<=1;i++){
+  let roadGeo = new THREE.BoxGeometry(2,0.1,20);
+  let roadMat = new THREE.MeshBasicMaterial({color:0x333333});
+  let road = new THREE.Mesh(roadGeo, roadMat);
+  road.position.x = i*3;
+  road.position.z = -10;
+  scene.add(road);
+  roads.push(road);
+}
+
+let level = 1;
+let score = 0;
+let currentIndex = 0;
+
+const vocab1 = ["angry","annoyed","down","ridiculous","grateful","insecure","eager","peaceful","hurt","thrilled","amused","hopeful","satisfied"];
+const vocab2 = ["learn by heart","make my mind up","in two minds","something on my mind","break his heart","close to my heart","change my mind","put my heart into","crossed my mind","bear in mind"];
+
+let currentList = vocab1;
+let correctLane = 0;
+
+function nextQuestion(){
+  if(currentIndex >= currentList.length){
+    if(level === 1){
+      level = 2;
+      currentList = vocab2;
+      currentIndex = 0;
+      document.getElementById("level").innerText = "Nivel 2";
+    } else {
+      alert("¡Ganaste! Score: " + score);
+      location.reload();
+    }
+  }
+
+  let word = currentList[currentIndex];
+  document.getElementById("word").innerText = "Traduce: " + word;
+  correctLane = Math.floor(Math.random()*3)-1;
+}
+
+nextQuestion();
+
+let velocityY = 0;
+let gravity = -0.01;
+
+window.addEventListener("keydown", (e)=>{
+  if(e.key === "ArrowLeft") bike.position.x -= 3;
+  if(e.key === "ArrowRight") bike.position.x += 3;
+  if(e.key === " " && bike.position.y === 0) velocityY = 0.2;
+});
+
+function checkAnswer(){
+  let lane = Math.round(bike.position.x / 3);
+  let result = document.getElementById("result");
+
+  if(lane === correctLane){
+    score += 10;
+    result.style.color = "green";
+    result.innerText = "Correct!";
+  } else {
+    score -= 5;
+    result.style.color = "red";
+    result.innerText = "Wrong!";
+  }
+
+  document.getElementById("score").innerText = "Score: " + score;
+
+  setTimeout(()=> result.innerText = "", 1000);
+
+  currentIndex++;
+  nextQuestion();
+  bike.position.x = 0;
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  velocityY += gravity;
+  bike.position.y += velocityY;
+
+  if(bike.position.y < 0){
+    bike.position.y = 0;
+    velocityY = 0;
+  }
+
+  bike.position.z -= 0.1;
+
+  if(bike.position.z < -10){
+    bike.position.z = 0;
+    checkAnswer();
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+</script></body>
+</html>
