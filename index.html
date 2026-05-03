@@ -1,350 +1,73 @@
-<!doctype html>
-<html lang="es" class="h-full">
- <head>
+<!DOCTYPE html><html lang="es">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Feelings Vocabulary</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="/_sdk/element_sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Noto+Color+Emoji&amp;display=swap" rel="stylesheet">
+  <title>Mini Editor de Video</title>
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
   <style>
-    * { font-family: 'Outfit', sans-serif; }
-    .card-flip { perspective: 800px; }
-    .card-inner { transition: transform 0.5s; transform-style: preserve-3d; }
-    .card-inner.flipped { transform: rotateY(180deg); }
-    .card-front, .card-back { backface-visibility: hidden; position: absolute; inset: 0; border-radius: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
-    .card-back { transform: rotateY(180deg); }
-    @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
-    .pop-in { animation: popIn 0.3s ease-out; }
-    .shake { animation: shake 0.4s ease-out; }
-    .mode-btn.active { box-shadow: 0 0 0 3px var(--accent); }
-    :root { --bg: #0f172a; --surface: #1e293b; --text: #f1f5f9; --accent: #f59e0b; --secondary: #64748b; }
+    body { font-family: sans-serif; padding: 10px; background: #111; color: #fff; }
+    video { width: 100%; margin-top: 10px; }
+    button, input { margin: 5px; padding: 10px; }
+    .controls { display: flex; flex-wrap: wrap; }
   </style>
-  <style>body { box-sizing: border-box; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
- </head>
- <body class="h-full bg-[var(--bg)] text-[var(--text)] overflow-auto">
-  <div id="app" class="w-full min-h-full flex flex-col items-center px-4 py-8">
-   <header class="text-center mb-8 pop-in">
-    <p id="subtitle" class="uppercase tracking-[0.3em] text-sm mb-2" style="color:var(--secondary)">Part 1 - Vocabulary</p>
-    <h1 id="pageTitle" class="text-4xl md:text-5xl font-800 mb-1" style="color:var(--accent)">Feelings</h1>
-    <p class="text-sm" style="color:var(--secondary)">Tema 7 · 13 palabras</p>
-   </header><!-- Mode Selector -->
-   <nav class="flex gap-2 mb-8 flex-wrap justify-center"><button onclick="setMode('cards')" id="modeCards" class="mode-btn active flex items-center gap-2 px-4 py-2 rounded-full text-sm font-500 transition-all" style="background:var(--surface);color:var(--text)"> <i data-lucide="layers" style="width:16px;height:16px"></i> Fichas </button> <button onclick="setMode('match')" id="modeMatch" class="mode-btn flex items-center gap-2 px-4 py-2 rounded-full text-sm font-500 transition-all" style="background:var(--surface);color:var(--text)"> <i data-lucide="puzzle" style="width:16px;height:16px"></i> Emparejar </button> <button onclick="setMode('quiz')" id="modeQuiz" class="mode-btn flex items-center gap-2 px-4 py-2 rounded-full text-sm font-500 transition-all" style="background:var(--surface);color:var(--text)"> <i data-lucide="brain" style="width:16px;height:16px"></i> Quiz </button> <button onclick="setMode('write')" id="modeWrite" class="mode-btn flex items-center gap-2 px-4 py-2 rounded-full text-sm font-500 transition-all" style="background:var(--surface);color:var(--text)"> <i data-lucide="pen-tool" style="width:16px;height:16px"></i> Escribir </button> <button onclick="setMode('fill')" id="modeFill" class="mode-btn flex items-center gap-2 px-4 py-2 rounded-full text-sm font-500 transition-all" style="background:var(--surface);color:var(--text)"> <i data-lucide="type" style="width:16px;height:16px"></i> Completar </button> <button onclick="setMode('list')" id="modeList" class="mode-btn flex items-center gap-2 px-4 py-2 rounded-full text-sm font-500 transition-all" style="background:var(--surface);color:var(--text)"> <i data-lucide="list" style="width:16px;height:16px"></i> Lista </button>
-   </nav>
-   <main id="content" class="w-full max-w-2xl flex-1"></main>
-  </div>
-  <script>
-const VOCAB = [
-  { en: "glad", es: "contento/a, alegre", emoji: "😊" },
-  { en: "annoyed", es: "molesto/a, irritado/a", emoji: "😤" },
-  { en: "down", es: "desanimado/a, triste", emoji: "😞" },
-  { en: "ridiculous", es: "ridículo/a", emoji: "🤪" },
-  { en: "grateful", es: "agradecido/a", emoji: "🙏" },
-  { en: "insecure", es: "inseguro/a", emoji: "😰" },
-  { en: "eager", es: "deseoso/a, entusiasmado/a", emoji: "🤩" },
-  { en: "peaceful", es: "tranquilo/a, en paz", emoji: "😌" },
-  { en: "hurt", es: "herido/a, dolido/a", emoji: "😢" },
-  { en: "thrilled", es: "emocionadísimo/a", emoji: "🎉" },
-  { en: "amused", es: "divertido/a, entretenido/a", emoji: "😄" },
-  { en: "hopeful", es: "esperanzado/a", emoji: "🌟" },
-  { en: "satisfied", es: "satisfecho/a", emoji: "😌" }
-];
+</head>
+<body><h2>Editor de Video Simple (FFmpeg)</h2>
+<input type="file" id="upload" accept="video/*"><video id="preview" controls></video>
 
-const FILL_SENTENCES = [
-  { sentence: "I felt really ________ when I got the exam results.", answer: "glad", hint: "contento/a" },
-  { sentence: "She was ________ with the noisy neighbours.", answer: "annoyed", hint: "molesto/a" },
-  { sentence: "He's feeling quite ________ after losing his job.", answer: "down", hint: "desanimado/a" },
-  { sentence: "That joke was absolutely ________ but funny!", answer: "ridiculous", hint: "ridículo/a" },
-  { sentence: "I'm very ________ for your help.", answer: "grateful", hint: "agradecido/a" },
-  { sentence: "She felt ________ about speaking in public.", answer: "insecure", hint: "inseguro/a" },
-  { sentence: "The team was ________ to win the championship.", answer: "eager", hint: "entusiasmado/a" },
-  { sentence: "He had a ________ expression on his face.", answer: "peaceful", hint: "tranquilo/a" },
-  { sentence: "She was ________ when he forgot her birthday.", answer: "hurt", hint: "dolido/a" },
-  { sentence: "I was absolutely ________ to hear the good news!", answer: "thrilled", hint: "emocionadísimo/a" },
-  { sentence: "The children were ________ by the magic show.", answer: "amused", hint: "divertido/a" },
-  { sentence: "I felt ________ that things would improve.", answer: "hopeful", hint: "esperanzado/a" },
-  { sentence: "She looked ________ after a good meal.", answer: "satisfied", hint: "satisfecho/a" }
-];
+<div class="controls">
+  <button onclick="trim()">✂️ Recortar 0-5s</button>
+  <button onclick="zoom()">🔍 Zoom</button>
+  <button onclick="split()">📂 Dividir en 2</button>
+</div><a id="download" style="display:none">Descargar</a>
 
-let currentMode = 'cards';
-let cardIndex = 0;
+<script>
+  const { createFFmpeg, fetchFile } = FFmpeg;
+  const ffmpeg = createFFmpeg({ log: true });
 
-function setMode(mode) {
-  currentMode = mode;
-  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
-  render();
-}
+  const video = document.getElementById('preview');
+  const upload = document.getElementById('upload');
+  const download = document.getElementById('download');
 
-function render() {
-  const c = document.getElementById('content');
-  if (currentMode === 'cards') renderCards(c);
-  else if (currentMode === 'match') renderMatch(c);
-  else if (currentMode === 'quiz') renderQuiz(c);
-  else if (currentMode === 'write') renderWrite(c);
-  else if (currentMode === 'fill') renderFill(c);
-  else renderList(c);
-}
+  let filename = 'input.mp4';
 
-// ── CARDS ──
-function renderCards(c) {
-  const w = VOCAB[cardIndex];
-  c.innerHTML = `
-    <div class="flex flex-col items-center gap-6">
-      <p style="color:var(--secondary)" class="text-sm">${cardIndex+1} / ${VOCAB.length}</p>
-      <div class="card-flip w-64 h-80 sm:w-72 sm:h-80 cursor-pointer mx-auto" onclick="this.querySelector('.card-inner').classList.toggle('flipped')">
-        <div class="card-inner w-full h-full relative pop-in">
-          <div class="card-front" style="background:var(--surface)">
-            <span class="text-5xl mb-4">${w.emoji}</span>
-            <span class="text-3xl font-700">${w.en}</span>
-            <span class="text-xs mt-4" style="color:var(--secondary)">Toca para ver traducción</span>
-          </div>
-          <div class="card-back" style="background:var(--accent);color:#0f172a">
-            <span class="text-5xl mb-4">${w.emoji}</span>
-            <span class="text-2xl font-700 text-center">${w.es}</span>
-            <span class="text-lg mt-2 font-500 opacity-70">${w.en}</span>
-          </div>
-        </div>
-      </div>
-      <div class="flex gap-4">
-        <button onclick="cardIndex=Math.max(0,cardIndex-1);render()" class="px-5 py-2 rounded-full font-500 transition-all hover:opacity-80" style="background:var(--surface)">
-          <i data-lucide="chevron-left" style="width:20px;height:20px"></i>
-        </button>
-        <button onclick="cardIndex=Math.min(VOCAB.length-1,cardIndex+1);render()" class="px-5 py-2 rounded-full font-500 transition-all hover:opacity-80" style="background:var(--surface)">
-          <i data-lucide="chevron-right" style="width:20px;height:20px"></i>
-        </button>
-      </div>
-    </div>`;
-  lucide.createIcons();
-}
+  upload.onchange = async (e) => {
+    const file = e.target.files[0];
+    video.src = URL.createObjectURL(file);
 
-// ── MATCH ──
-function renderMatch(c) {
-  const shuffled = [...VOCAB].sort(() => Math.random() - 0.5).slice(0, 6);
-  const enWords = [...shuffled].sort(() => Math.random() - 0.5);
-  const esWords = [...shuffled].sort(() => Math.random() - 0.5);
-  let selected = null, matched = new Set();
+    if (!ffmpeg.isLoaded()) await ffmpeg.load();
 
-  c.innerHTML = `
-    <div class="text-center mb-4"><p style="color:var(--secondary)" class="text-sm">Empareja inglés ↔ español</p></div>
-    <div id="matchGrid" class="grid grid-cols-2 gap-3 max-w-lg mx-auto"></div>
-    <div id="matchMsg" class="text-center mt-6"></div>`;
+    ffmpeg.FS('writeFile', filename, await fetchFile(file));
+  };
 
-  const grid = document.getElementById('matchGrid');
-
-  function renderGrid() {
-    grid.innerHTML = '';
-    const col1 = document.createElement('div');
-    col1.className = 'flex flex-col gap-2';
-    const col2 = document.createElement('div');
-    col2.className = 'flex flex-col gap-2';
-
-    enWords.forEach((w, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'px-4 py-3 rounded-xl text-left font-500 transition-all';
-      btn.style.background = matched.has(w.en) ? 'var(--accent)' : (selected?.type === 'en' && selected.word === w.en ? 'var(--accent)' : 'var(--surface)');
-      btn.style.color = matched.has(w.en) || (selected?.type === 'en' && selected.word === w.en) ? '#0f172a' : 'var(--text)';
-      btn.style.opacity = matched.has(w.en) ? '0.5' : '1';
-      btn.textContent = w.en;
-      if (!matched.has(w.en)) btn.onclick = () => pick('en', w.en, w);
-      col1.appendChild(btn);
-    });
-
-    esWords.forEach((w, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'px-4 py-3 rounded-xl text-left font-500 transition-all';
-      btn.style.background = matched.has(w.en) ? 'var(--accent)' : (selected?.type === 'es' && selected.word === w.en ? 'var(--accent)' : 'var(--surface)');
-      btn.style.color = matched.has(w.en) || (selected?.type === 'es' && selected.word === w.en) ? '#0f172a' : 'var(--text)';
-      btn.style.opacity = matched.has(w.en) ? '0.5' : '1';
-      btn.textContent = w.es;
-      if (!matched.has(w.en)) btn.onclick = () => pick('es', w.en, w);
-      col2.appendChild(btn);
-    });
-
-    grid.appendChild(col1);
-    grid.appendChild(col2);
+  async function trim() {
+    await ffmpeg.run('-i', filename, '-ss', '0', '-to', '5', '-c', 'copy', 'out.mp4');
+    exportVideo('out.mp4');
   }
 
-  function pick(type, key, w) {
-    if (!selected) { selected = { type, word: key }; renderGrid(); return; }
-    if (selected.type === type) { selected = { type, word: key }; renderGrid(); return; }
-    if (selected.word === key) {
-      matched.add(key);
-      selected = null;
-      renderGrid();
-      if (matched.size === shuffled.length) {
-        document.getElementById('matchMsg').innerHTML = '<p class="text-xl font-700 pop-in" style="color:var(--accent)">🎉 ¡Perfecto!</p><button onclick="render()" class="mt-3 px-5 py-2 rounded-full font-500" style="background:var(--surface)">Jugar de nuevo</button>';
-      }
-    } else {
-      grid.classList.add('shake');
-      setTimeout(() => { grid.classList.remove('shake'); selected = null; renderGrid(); }, 400);
-    }
+  async function zoom() {
+    await ffmpeg.run(
+      '-i', filename,
+      '-vf', 'scale=iw*1.5:ih*1.5',
+      'zoom.mp4'
+    );
+    exportVideo('zoom.mp4');
   }
 
-  renderGrid();
-}
-
-// ── QUIZ ──
-let quizData, quizIdx, quizScore;
-function renderQuiz(c) {
-  quizData = [...VOCAB].sort(() => Math.random() - 0.5);
-  quizIdx = 0; quizScore = 0;
-  showQuestion(c);
-}
-
-function showQuestion(c) {
-  if (quizIdx >= quizData.length) {
-    c.innerHTML = `<div class="text-center pop-in">
-      <p class="text-6xl mb-4">${quizScore >= 10 ? '🏆' : quizScore >= 7 ? '👏' : '💪'}</p>
-      <p class="text-3xl font-700" style="color:var(--accent)">${quizScore} / ${quizData.length}</p>
-      <p class="mt-2" style="color:var(--secondary)">${quizScore >= 10 ? '¡Increíble!' : quizScore >= 7 ? '¡Muy bien!' : '¡Sigue practicando!'}</p>
-      <button onclick="render()" class="mt-6 px-6 py-3 rounded-full font-600" style="background:var(--accent);color:#0f172a">Repetir Quiz</button>
-    </div>`;
-    return;
-  }
-  const q = quizData[quizIdx];
-  const wrong = VOCAB.filter(w => w.en !== q.en).sort(() => Math.random() - 0.5).slice(0, 3);
-  const opts = [...wrong.map(w => w.es), q.es].sort(() => Math.random() - 0.5);
-
-  c.innerHTML = `
-    <div class="text-center pop-in">
-      <p class="text-sm mb-1" style="color:var(--secondary)">${quizIdx+1} / ${quizData.length}</p>
-      <div class="w-full rounded-full h-1.5 mb-6" style="background:var(--surface)"><div class="h-1.5 rounded-full transition-all" style="width:${(quizIdx/quizData.length)*100}%;background:var(--accent)"></div></div>
-      <p class="text-5xl mb-3">${q.emoji}</p>
-      <p class="text-3xl font-700 mb-1">${q.en}</p>
-      <p class="text-sm mb-6" style="color:var(--secondary)">¿Qué significa?</p>
-      <div id="quizOpts" class="flex flex-col gap-3 max-w-sm mx-auto">${opts.map(o => `
-        <button class="quiz-opt px-5 py-3 rounded-xl font-500 text-left transition-all" style="background:var(--surface)" data-answer="${o === q.es}">${o}</button>
-      `).join('')}</div>
-    </div>`;
-
-  document.querySelectorAll('.quiz-opt').forEach(btn => {
-    btn.onclick = () => {
-      const correct = btn.dataset.answer === 'true';
-      if (correct) quizScore++;
-      document.querySelectorAll('.quiz-opt').forEach(b => {
-        b.onclick = null;
-        if (b.dataset.answer === 'true') { b.style.background = '#22c55e'; b.style.color = '#fff'; }
-        else if (b === btn && !correct) { b.style.background = '#ef4444'; b.style.color = '#fff'; b.classList.add('shake'); }
-        else b.style.opacity = '0.4';
-      });
-      setTimeout(() => { quizIdx++; showQuestion(c); }, 1000);
-    };
-  });
-}
-
-// ── LIST ──
-function renderList(c) {
-  c.innerHTML = `<div class="grid gap-2">${VOCAB.map(w => `
-    <div class="flex items-center gap-4 px-5 py-3 rounded-xl transition-all hover:scale-[1.02]" style="background:var(--surface)">
-      <span class="text-2xl">${w.emoji}</span>
-      <div class="flex-1">
-        <span class="font-600 text-lg">${w.en}</span>
-        <span class="mx-2" style="color:var(--secondary)">·</span>
-        <span style="color:var(--secondary)">${w.es}</span>
-      </div>
-    </div>
-  `).join('')}</div>`;
-}
-
-// ── WRITE ──
-let writeIdx = 0;
-function renderWrite(c) {
-  const w = VOCAB[writeIdx];
-  c.innerHTML = `
-    <div class="flex flex-col items-center gap-6">
-      <p style="color:var(--secondary)" class="text-sm">${writeIdx+1} / ${VOCAB.length}</p>
-      <div class="w-full rounded-full h-1.5 mb-2" style="background:var(--surface)"><div class="h-1.5 rounded-full transition-all" style="width:${(writeIdx/VOCAB.length)*100}%;background:var(--accent)"></div></div>
-      <div class="text-center">
-        <p class="text-5xl mb-3">${w.emoji}</p>
-        <p style="color:var(--secondary)" class="text-sm mb-2">Significado:</p>
-        <p class="text-2xl font-600 mb-6">${w.es}</p>
-        <p class="text-sm" style="color:var(--secondary)">¿Cuál es la palabra en inglés?</p>
-      </div>
-      <div class="w-full max-w-sm">
-        <input id="writeInput" type="text" placeholder="Escribe aquí..." class="w-full px-5 py-3 rounded-xl text-center font-500 focus:outline-none" style="background:var(--surface);color:var(--text)" onkeypress="if(event.key==='Enter') checkWrite('${w.en}')">
-        <div id="writeFeedback" class="mt-3 text-center text-sm" style="min-height:20px"></div>
-      </div>
-      <div class="flex gap-4">
-        <button onclick="writeIdx=Math.max(0,writeIdx-1);renderWrite(document.getElementById('content'))" class="px-5 py-2 rounded-full font-500 transition-all hover:opacity-80" style="background:var(--surface)">
-          <i data-lucide="chevron-left" style="width:20px;height:20px"></i>
-        </button>
-        <button onclick="checkWrite('${w.en}')" class="px-6 py-2 rounded-full font-600 transition-all" style="background:var(--accent);color:#0f172a">Comprobar</button>
-        <button onclick="writeIdx=Math.min(VOCAB.length-1,writeIdx+1);renderWrite(document.getElementById('content'))" class="px-5 py-2 rounded-full font-500 transition-all hover:opacity-80" style="background:var(--surface)">
-          <i data-lucide="chevron-right" style="width:20px;height:20px"></i>
-        </button>
-      </div>
-    </div>`;
-  document.getElementById('writeInput').focus();
-  lucide.createIcons();
-}
-
-function checkWrite(correct) {
-  const input = document.getElementById('writeInput');
-  const feedback = document.getElementById('writeFeedback');
-  const userAnswer = input.value.trim().toLowerCase();
-  const correctAnswer = correct.toLowerCase();
-
-  if (userAnswer === '') {
-    feedback.textContent = 'Escribe algo primero';
-    feedback.style.color = '#ef4444';
-    return;
+  async function split() {
+    await ffmpeg.run('-i', filename, '-t', '5', '-c', 'copy', 'part1.mp4');
+    await ffmpeg.run('-i', filename, '-ss', '5', '-c', 'copy', 'part2.mp4');
+    exportVideo('part1.mp4');
   }
 
-  if (userAnswer === correctAnswer) {
-    feedback.innerHTML = '<span style="color:#22c55e;font-weight:600">✓ ¡Correcto!</span>';
-    input.disabled = true;
-    setTimeout(() => {
-      if (writeIdx < VOCAB.length - 1) {
-        writeIdx++;
-        renderWrite(document.getElementById('content'));
-      } else {
-        showWriteComplete();
-      }
-    }, 1000);
-  } else {
-    feedback.innerHTML = `<span style="color:#ef4444;font-weight:600">✗ Incorrecto. La respuesta es: <strong>${correct}</strong></span>`;
-    input.classList.add('shake');
-    setTimeout(() => input.classList.remove('shake'), 400);
+  function exportVideo(name) {
+    const data = ffmpeg.FS('readFile', name);
+    const url = URL.createObjectURL(new Blob([data.buffer], { type: 'video/mp4' }));
+
+    video.src = url;
+    download.href = url;
+    download.download = name;
+    download.style.display = 'block';
+    download.innerText = '⬇️ Descargar ' + name;
   }
-}
-
-function showWriteComplete() {
-  document.getElementById('content').innerHTML = `<div class="text-center pop-in">
-    <p class="text-6xl mb-4">🎉</p>
-    <p class="text-3xl font-700" style="color:var(--accent)">¡Lo hiciste!</p>
-    <p class="mt-2" style="color:var(--secondary)">Completaste todos los ejercicios de escritura</p>
-    <button onclick="writeIdx=0;render()" class="mt-6 px-6 py-3 rounded-full font-600" style="background:var(--accent);color:#0f172a">Volver a intentar</button>
-  </div>`;
-}
-
-// ── FILL (Completar frases) ──
-let fillIdx = 0;
-function renderFill(c) {
-  const item = FILL_SENTENCES[fillIdx];
-  const parts = item.sentence.split('________');
-  
-  c.innerHTML = `
-    <div class="flex flex-col items-center gap-6">
-      <p style="color:var(--secondary)" class="text-sm">${fillIdx+1} / ${FILL_SENTENCES.length}</p>
-      <div class="w-full rounded-full h-1.5 mb-2" style="background:var(--surface)"><div class="h-1.5 rounded-full transition-all" style="width:${(fillIdx/FILL_SENTENCES.length)*100}%;background:var(--accent)"></div></div>
-      
-      <div class="text-center max-w-lg">
-        <p class="text-lg leading-relaxed mb-6" style="color:var(--text)">
-          <span>${parts[0]}</span>
-          <input id="fillInput" type="text" placeholder="?" class="px-3 py-2 mx-1 rounded-lg font-600 text-center focus:outline-none inline-block" style="background:var(--surface);color:var(--accent);width:120px;border:2px solid var(--surface)" onkeypress="if(event.key==='Enter') checkFill('${item.answer}')">
-          <span>${parts[1]}</span>
-        </p>
-        <p class="text-xs" style="color:var(--secondary)">💡 Pista: ${item.hint}</p>
-        <div id="fillFeedback" class="mt-4 text-sm" style="min-height:20px"></div>
-      </div>
-      
-      <div class="flex gap-4">
-        <button onclick="fillIdx=Math.max(0,fillIdx-1);renderFill(document.getElementById('content'))" class="px-5 py-2 rounded-full font-500 transition-all hover:opacity-80" style="background:var(--surface)">
-          <i data-lucide="chevron-left" style="width:20px;height:20px"></i>
-        </button>
-        <button onclick="checkFill('${item.answer}')" class="px-6 py-2 rounded-full font-600 transition-all" style="background:var(--accent);color:#0f172a">Comprobar</button>
-        <button onclick="fillIdx=Math.min(FILL_SENTENCES.l
+</script></body>
+</html>
