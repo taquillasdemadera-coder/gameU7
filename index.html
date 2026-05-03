@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>3D Vocabulary Runner Game</title>
+  <title>3D Vocabulary Runner (Three.js)</title>
   <style>
     body { margin: 0; overflow: hidden; font-family: Arial; background: #000; }
     #ui {
@@ -19,7 +19,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 40px;
+      font-size: 48px;
       font-weight: bold;
       z-index: 10;
     }
@@ -28,15 +28,16 @@
 <body><div id="ui">
   <div id="level">Nivel 1</div>
   <div id="score">Score: 0</div>
-  <div id="word">Loading...</div>
+  <div id="target"></div>
 </div>
 <div id="feedback"></div><script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script><script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script><script>
-// ===== SCENE =====
+// ================= SCENE =================
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x000000, 10, 50);
+scene.fog = new THREE.Fog(0x000000, 5, 40);
 
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 3, 8);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 4, 8);
+camera.lookAt(0,0,0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -47,20 +48,22 @@ const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(0,10,10);
 scene.add(light);
 
-// ===== AUDIO =====
+const ambient = new THREE.AmbientLight(0x404040);
+scene.add(ambient);
+
+// ================= AUDIO =================
 const music = new Howl({
   src: ["https://cdn.pixabay.com/download/audio/2022/03/15/audio_115b9bba82.mp3"],
   loop: true,
-  volume: 0.3
+  volume: 0.25
 });
-
 document.body.addEventListener("click", ()=> music.play(), { once:true });
 
-// ===== LANES =====
+// ================= LANES =================
 const lanes = [-2, 0, 2];
-let playerLane = 1;
+let lane = 1;
 
-// ===== PLAYER =====
+// ================= PLAYER =================
 const player = new THREE.Mesh(
   new THREE.BoxGeometry(0.8,0.8,0.8),
   new THREE.MeshStandardMaterial({ color: 0xff0000 })
@@ -68,123 +71,119 @@ const player = new THREE.Mesh(
 player.position.y = 0.5;
 scene.add(player);
 
-// ===== DATA =====
-const level1 = [
-  "angry","annoyed","down","ridiculous","grateful",
-  "insecure","eager","peaceful","hurt","thrilled"
-];
-
-const level2 = [
-  "learn by heart","make my mind up","in two minds","on my mind",
-  "break his heart","close to my heart","change my mind","put my heart into"
-];
+// ================= VOCAB =================
+const level1 = ["angry","annoyed","down","ridiculous","grateful","insecure","eager","peaceful","hurt","thrilled"];
+const level2 = ["learn by heart","make my mind up","in two minds","on my mind","break his heart","close to my heart","change my mind","put my heart into","crossed my mind","bear in mind"];
 
 let level = 1;
 let words = level1;
 let index = 0;
 let score = 0;
 
-// ===== TILE SYSTEM =====
+// ================= TILE SYSTEM =================
 const tiles = [];
+let targetWord = "";
 
-function createTile(word, lane, isCorrect) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = isCorrect ? "green" : "white";
-  ctx.fillRect(0,0,256,128);
-
-  ctx.fillStyle = "black";
-  ctx.font = "20px Arial";
-  ctx.textAlign = "center";
-  ctx.fillText(word, 128, 70);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  const mat = new THREE.MeshStandardMaterial({ map: tex });
-
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.5,0.2,1.5),
-    mat
-  );
-
-  mesh.position.set(lanes[lane],0, -30);
-  mesh.userData = { lane, isCorrect };
-
-  scene.add(mesh);
-  tiles.push(mesh);
+function setTarget(){
+  targetWord = words[index % words.length];
+  document.getElementById("target").innerText = "Find: " + targetWord;
 }
 
-function spawnRow() {
+function createRow(){
   const correctLane = Math.floor(Math.random()*3);
-  const correctWord = words[index % words.length];
 
-  for (let i=0;i<3;i++) {
-    const word = (i === correctLane) ? correctWord : words[Math.floor(Math.random()*words.length)];
-    createTile(word, i, i === correctLane);
+  for(let i=0;i<3;i++){
+    const word = (i === correctLane) ? targetWord : words[Math.floor(Math.random()*words.length)];
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,256,128);
+    ctx.fillStyle = "black";
+    ctx.font = "22px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(word,128,70);
+
+    const tex = new THREE.CanvasTexture(canvas);
+
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6,0.2,1.6),
+      new THREE.MeshStandardMaterial({ map: tex })
+    );
+
+    mesh.position.set(lanes[i],0,-30);
+    mesh.userData = { lane:i, correct:(i===correctLane), word };
+
+    scene.add(mesh);
+    tiles.push(mesh);
   }
 }
 
-// ===== GAME FLOW =====
-function next() {
+// ================= GAME FLOW =================
+function next(){
   index++;
-  document.getElementById("word").innerText = "Find: " + words[index % words.length];
 
-  if (index % 5 === 0) spawnRow();
-
-  if (index === 10 && level === 1) {
+  if(index % 5 === 0 && level === 1){
     level = 2;
     words = level2;
     document.getElementById("level").innerText = "Nivel 2";
   }
+
+  setTarget();
+  createRow();
 }
 
-next();
-spawnRow();
+setTarget();
+createRow();
 
-// ===== INPUT =====
-window.addEventListener("keydown", (e)=>{
-  if (e.key === "ArrowLeft") playerLane = Math.max(0, playerLane-1);
-  if (e.key === "ArrowRight") playerLane = Math.min(2, playerLane+1);
+// ================= INPUT =================
+window.addEventListener("keydown", e=>{
+  if(e.key === "ArrowLeft") lane = Math.max(0,lane-1);
+  if(e.key === "ArrowRight") lane = Math.min(2,lane+1);
 });
 
-// ===== COLLISION =====
-function checkCollision(tile) {
-  if (Math.abs(tile.position.z - player.position.z) < 1.2) {
-    if (tile.userData.lane === playerLane) {
-      if (tile.userData.isCorrect) {
+// ================= COLLISION =================
+function hit(tile){
+  if(Math.abs(tile.position.z - player.position.z) < 1){
+
+    if(tile.userData.lane === lane){
+
+      if(tile.userData.correct){
         score += 10;
-        show("CORRECT", "green");
+        show("CORRECT","lime");
       } else {
         score -= 5;
-        show("WRONG", "red");
+        show("WRONG","red");
       }
+
       document.getElementById("score").innerText = "Score: " + score;
       next();
     }
   }
 }
 
-function show(text, color) {
+function show(t,c){
   const f = document.getElementById("feedback");
-  f.innerText = text;
-  f.style.color = color;
-  setTimeout(()=> f.innerText = "", 800);
+  f.innerText = t;
+  f.style.color = c;
+  setTimeout(()=> f.innerText="",600);
 }
 
-// ===== LOOP =====
-function animate() {
+// ================= LOOP =================
+function animate(){
   requestAnimationFrame(animate);
 
-  player.position.x += (lanes[playerLane] - player.position.x) * 0.2;
+  player.position.x += (lanes[lane] - player.position.x) * 0.2;
 
-  tiles.forEach(t => {
-    t.position.z += 0.15;
-    checkCollision(t);
+  tiles.forEach(t=>{
+    t.position.z += 0.18;
+    hit(t);
   });
 
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
 
 animate();
